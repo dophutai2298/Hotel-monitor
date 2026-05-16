@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Building2, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import {useNavigate} from 'react-router-dom'
 
 interface LoginPageProps {
   onToggleMode: () => void;
@@ -15,7 +16,7 @@ export default function LoginPage({ onToggleMode, isRegister }: LoginPageProps) 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const navigate = useNavigate()
   // Use useCallback for stable callbacks (rerender-functional-setstate)
   const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
@@ -54,9 +55,11 @@ export default function LoginPage({ onToggleMode, isRegister }: LoginPageProps) 
       if (isRegister) {
         await register({ email, password, firstName, lastName });
         toast.success('Registration successful!');
+         navigate('/login');
       } else {
         await login({ email, password });
         toast.success('Login successful!');
+        navigate('/');
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Authentication failed');
