@@ -16,6 +16,7 @@ Real-time hotel room monitoring system: NestJS API (port 3001) + React frontend 
 npm run install:all     # Install all dependencies
 npm run dev             # Run both API and client in dev mode
 npm run build           # Build both projects
+npm run start:prod      # Run API in production mode
 ```
 
 ### Backend (api/)
