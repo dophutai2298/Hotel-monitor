@@ -1,15 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+                                   import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { Room, RoomStatus, RoomType } from './entities/room.entity';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { CheckInDto } from './dto/check-in.dto';
+import { EventsGateway } from '../gateways/events.gateway';
 
 @Injectable()
 export class RoomsService {
   private rooms: Map<string, Room> = new Map();
 
-  constructor() {
+  constructor(private readonly eventsGateway: EventsGateway) {
     this.seedData();
   }
 
@@ -28,20 +29,26 @@ export class RoomsService {
       this.rooms.set(room.id, room);
     });
 
-    this.checkInRoom([...this.rooms.values()][1].id, {
-      guestName: 'John Smith',
-      guestPhone: '+1-555-0123',
-      checkInDate: new Date().toISOString(),
-      checkOutDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    });
-
-    const cleaningRoom = [...this.rooms.values()][2];
-    cleaningRoom.status = RoomStatus.CLEANING;
-    cleaningRoom.lastCleaned = new Date(Date.now() - 2 * 60 * 60 * 1000);
-
-    const maintenanceRoom = [...this.rooms.values()][3];
-    maintenanceRoom.status = RoomStatus.MAINTENANCE;
-    maintenanceRoom.notes = 'AC unit needs repair';
+    // Set initial room statuses without emitting events (these are just seed data)
+    const roomsArray = [...this.rooms.values()];
+    
+    // Make room 102 occupied
+    const room102 = roomsArray[1];
+    room102.status = RoomStatus.OCCUPIED;
+    room102.guestName = 'John Smith';
+    room102.guestPhone = '+1-555-0123';
+    room102.checkInDate = new Date();
+    room102.checkOutDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    
+    // Make room 201 cleaning
+    const room201 = roomsArray[2];
+    room201.status = RoomStatus.CLEANING;
+    room201.lastCleaned = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    
+    // Make room 202 maintenance
+    const room202 = roomsArray[3];
+    room202.status = RoomStatus.MAINTENANCE;
+    room202.notes = 'AC unit needs repair';
   }
 
   private createRoomEntity(dto: CreateRoomDto): Room {
@@ -93,6 +100,8 @@ export class RoomsService {
 
     const room = this.createRoomEntity(dto);
     this.rooms.set(room.id, room);
+    this.eventsGateway.emitRoomCreated(room);
+    this.eventsGateway.emitStatsUpdate(this.getStats());
     return room;
   }
 
@@ -106,6 +115,8 @@ export class RoomsService {
       updatedAt: new Date(),
     };
     this.rooms.set(id, updatedRoom);
+    this.eventsGateway.emitRoomUpdate(id, updatedRoom);
+    this.eventsGateway.emitStatsUpdate(this.getStats());
     return updatedRoom;
   }
 
@@ -114,6 +125,8 @@ export class RoomsService {
     if (room.status === RoomStatus.OCCUPIED) {
       throw new BadRequestException('Cannot delete an occupied room');
     }
+    this.eventsGateway.emitRoomDeleted(id);
+    this.eventsGateway.emitStatsUpdate(this.getStats());
     this.rooms.delete(id);
   }
 
@@ -133,8 +146,9 @@ export class RoomsService {
       checkOutDate: new Date(dto.checkOutDate),
       updatedAt: new Date(),
     };
-
     this.rooms.set(id, updatedRoom);
+    this.eventsGateway.emitRoomUpdate(id, updatedRoom);
+    this.eventsGateway.emitStatsUpdate(this.getStats());
     return updatedRoom;
   }
 
@@ -154,8 +168,9 @@ export class RoomsService {
       checkOutDate: undefined,
       updatedAt: new Date(),
     };
-
     this.rooms.set(id, updatedRoom);
+    this.eventsGateway.emitRoomUpdate(id, updatedRoom);
+    this.eventsGateway.emitStatsUpdate(this.getStats());
     return updatedRoom;
   }
 
@@ -172,8 +187,9 @@ export class RoomsService {
       lastCleaned: new Date(),
       updatedAt: new Date(),
     };
-
     this.rooms.set(id, updatedRoom);
+    this.eventsGateway.emitRoomUpdate(id, updatedRoom);
+    this.eventsGateway.emitStatsUpdate(this.getStats());
     return updatedRoom;
   }
 
